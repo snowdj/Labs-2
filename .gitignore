@@ -57,8 +57,13 @@ Volume2/GradientMethods/logregression.txt
 Volume2/InteriorPoint_Linear/simdata.txt
 Volume2/InteriorPoint_Quadratic/portfolio.txt
 
+Volume3/UnixShell2/Shell2.zip
+Volume3/UnixShell2/Shell2/
 Volume3/SQL1/*.csv
 Volume3/SQL2/*.csv
+Volume3/RegularExpressions/fake_contacts.txt
+Volume3/WebTech/nyc_*.json
+Volume3/Pandas?/*.csv
 
 ###################
 # Latex tmp files #
@@ -194,3 +199,4 @@ build/
 # Miscellaneous
 !docs/*.pdf
 onelab.tex
+nyc_*.json

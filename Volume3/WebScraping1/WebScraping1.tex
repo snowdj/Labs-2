@@ -1,535 +1,455 @@
-\lab{BeautifulSoup}{BeautifulSoup}
-\objective{Virtually everything rendered by an internet browser as a web page uses HTML.
-As a result, learning HTML is key to any kind of internet programming.
-BeautifulSoup is a Python package that helps navigate HTML documents.
-In this lab, we learn how to load HTML documents into BeautifulSoup and navigate the resulting BeautifulSoup object.}
-\label{lab:BS_scraping}
+\lab{Web Scraping I: Introduction to BeautifulSoup}{Introduction to Beautiful Soup}
+\objective{Web Scraping is the process of gathering data from websites on the internet.
+Since almost everything rendered by an internet browser as a web page uses HTML, the first step in web scraping is being able to extract information from HTML.
+In this lab, we introduce BeautifulSoup, Python's canonical tool for efficiently and cleanly navigating and parsing HTML.}
 
-\section*{HTML}
-HTML, or Hyper Text Markup Language is the standard markup language to create webpages.
-Just like XML, HTML tags describe different document content and are surrounded by angle brackets.
-Most tags can be combined with attributes such as \lstinline[language=html]{id} or \lstinline[language=html]{class} to help identify individual tags and make navigating the HTML tree much more simple.
-A list of all the current HTML tags can be found at \url{http://htmldog.com/reference/htmltags}.
-Here is an example:
+\section*{HTML} % =============================================================
+
+\emph{Hyper Text Markup Language}, or \emph{HTML}, is the standard \emph{markup language}---a language designed for the processing, definition, and presentation of text---for creating webpages.
+It provides a document with structure and is composed of pairs of \emph{tags} to surround and define various types of content.
+Opening tags have a tag name surrounded by angle brackets (\li{<tag-name>}).
+The companion closing tag looks the same, but with a forward slash before the tag name (\li{</tag-name>}).
+A list of all current HTML tags can be found at \url{http://htmldog.com/reference/htmltags}.
+
+Most tags can be combined with \emph{attributes} to include more data about the content, help identify individual tags, and make navigating the document much simpler.
+In the following example, the \li{<a>} tag has \lstinline[language=HTML]{id} and \li{href} attributes.
+
 \begin{lstlisting}[language=HTML]
-<html>
-    <body>
-        <p>
-            Click <a id='info' href='http://www.example.com'>here</a> for more information.
-        </p>
-    </body>
+<html>                                  <!-- Opening tags -->
+   <body>
+       <p>
+           Click <a id='info' href='http://www.example.com'>here</a>
+           for more information.
+       </p>                             <!-- Closing tags -->
+   </body>
 </html>
 \end{lstlisting}
 
-The above example would output a single line
-\begin{lstlisting}[language=HTML]
-Click here for more information.
-\end{lstlisting}
-with `here' being a clickable link to the website \url{http://www.example.com}.
+In HTML, \li{href} stands for \emph{hypertext reference}, a link to another website.
+Thus the above example would be rendered by a browser as a single line of text, with \li{here} being a clickable link to \url{http://www.example.com}:
 
-While less readable, this HTML code can also be written as a single line as follows:
+\begin{center}
+Click \href{http://www.example.com}{here} for more information.
+\end{center}
+
+Unlike Python, HTML does not enforce indentation (or any whitespace rules), though indentation generally makes HTML more readable.
+The previous example can even be written equivalently in a single line.
+
 \begin{lstlisting}[language=HTML]
-<html><body><p>Click <a id='info' href='http://www.example.com/info'>here</a> for more information.</p></body></html>
-\end{lstlisting}
-If a given tag doesn't contain any text or other tags, it can be written in a single pair of brackets as
-\begin{lstlisting}[language=HTML]
-<*tag_name*  ... *attributes*/>
+<html><body><p>Click <a id='info' href='http://www.example.com/info'>here</a>
+  for more information.</p></body></html>
 \end{lstlisting}
 
-The HTML of a website is very easy to view.
-Go to any website, such as \url{http://www.example.com}, in whatever browser is most convenient.
-Once on the website, right click with the mouse pointer and look for `View Page Source' or a similarly worded option.
-Click it and the browser will open a new browser with the HTML code for your site.
-Some code is easy to follow, other code not so much.
+Special tags, which don't contain any text or other tags, are written without a closing tag and in a single pair of brackets.
+A forward slash is included between the name and the closing bracket.
+Examples of these include \li{<hr/>}, which describes a horizontal line, and \li{<img/>}, the tag for representing an image.
 
-\begin{problem}
-Go to the website \url{http://www.example.com} and open the source code.
-What are all the tags used?
+\begin{problem} % Use View Page Source to see HTML source of a simple website.
+The HTML of a website is easy to view in most browsers.
+In Google Chrome, go to \url{http://www.example.com}, right click anywhere on the page that isn't a picture or a link, and select \li{View Page Source}.
+This will open the HTML source code that defines the page.
+Examine the source code.
+What tags are used?
 What is the value of the \li{<<type>>} attribute associated with the \li{style} tag?
-Write a function that returns a list of all the tags used and the value of the \li{<<type>>} attribute.
+
+Write a function that returns the set of names of tags used in the website, and the value of the \li{<<type>>} attribute of the \li{style} tag (as a string).
+\\(Hint: there are ten unique tag names.)
+\label{prob:look-at-example.com}
 \end{problem}
 
-\section*{Loading HTML into BeautifulSoup}
-Now that we know what HTML is, we can use BeautifulSoup to create a \li{BeautifulSoup} object.
-BeautifulSoup is a library capable of pulling data out of HTML scripts and files. BeautifulSoup works with a parser to provide commands to navigate and search the resulting HTML tree.
-Make sure the module \li{bs4} is installed in your Python packages.
-This section takes most of its material from \url{http://www.crummy.com/software/BeautifulSoup/bs4/doc/index.html}.
+\section*{BeautifulSoup} % ====================================================
 
-First we want a variable to store our HTML code as a string.
-\begin{lstlisting}
->>> doc = """
-...     <html><body><p>
-...     Click <a id='info' href='http://www.example.com/info'>here</a> for more information.
-...     </p></body></html>
-...     """
-\end{lstlisting}
+BeautifulSoup (\li{bs4}) is a package%
+\footnote{BeautifulSoup is not part of the standard library; install it with \li{conda install beautifulsoup4} or with \li{pip install beautifulsoup4}.} that makes it simple to navigate and extract data from HTML documents.
+See \url{http://www.crummy.com/software/BeautifulSoup/bs4/doc/index.html} for the full documentation.
 
-Next, we import \li{BeautifulSoup} from the \li{bs4} module.
-We call \li{BeautifulSoup()}, which takes as parameters the HTML string and an HTML parser.
-It returns a \li{BeautifulSoup} object, which represents the document as a nested data structure.
+The \li{bs4.BeautifulSoup} class accepts two parameters to its constructor: a string of HTML code, and an HTML parser to use under the hood.
+The HTML parser is technically a keyword argument, but the constructor prints a warning if one is not specified.
+The standard choice for the parser is \li{"html.parser"}, which means the object uses the standard library's \li{html.parser} module as the engine behind the scenes.
+
+\begin{info}
+Depending on project demands, a parser other than \li{"html.parser"} may be useful.
+A couple of other options are \li{"lxml"}, an extremely fast parser written in C, and \li{"html5lib"}, a slower parser that treats HTML in much the same way a web browser does, allowing for irregularities.
+Both must be installed independently; see \url{https://www.crummy.com/software/BeautifulSoup/bs4/doc/\#installing-a-	parser} for more information.
+\end{info}
+
+A \li{BeautifulSoup} object represents an HTML document as a tree.
+In the tree, each tag is a \emph{node} with nested tags and strings as its \emph{children}.
+The \li{prettify()} method returns a string that can be printed to represent the BeautifulSoup object in a readable format that reflects the tree structure.
+
 \begin{lstlisting}
 >>> from bs4 import BeautifulSoup
->>> soup = BeautifulSoup(doc, 'html.parser')
-\end{lstlisting}
 
-Including an HTML parser is optional, but a warning is given if one is not included.
-If that's the case, BeautifulSoup uses the HTML parser included in Python's standard library.
-Although other parsers are permitted, we have no need for them in our examples.
-
-Once the document is stored, we can use \li{prettify()} to view the HTML.
-The \li{prettify()} method returns a string that can be printed to represent the BeautifulSoup object in a readable format.
-This will be useful later to make sure we are getting the correct HTML from websites.
-
-\begin{lstlisting}
->>> print(soup.prettify())
-<<<html>
-  <body>
-    <p>
-      Click <a id='info' href='http://www.example.com/info'>here</a> for more information.
-    </p>
-  </body>
-</html>>>
-\end{lstlisting}
-
-\begin{problem}\label{make_soup}
-Write a function that loads the following string into BeautifulSoup, then prettifies it. Print the prettified string.
-\begin{lstlisting}
-html_doc = """
-<html><head><title>The Three Stooges</title></head>
-<body>
-<p class="title"><b>The Three Stooges</b></p>
-
-<p class="story">Have you ever met the three stooges? Their names are
-<a href="http://example.com/larry" class="stooge" id="link1">Larry</a>,
-<a href="http://example.com/mo" class="stooge" id="link2">Mo</a> and
-<a href="http://example.com/curly" class="stooge" id="link3">Curly</a>;
-and they are really hilarious.</p>
-
-<p class="story">...</p>
+>>> small_example_html = """
+<html><body><p>
+    Click <a id='info' href='http://www.example.com'>here</a>
+    for more information.
+</p></body></html>
 """
-\end{lstlisting}
 
-\begin{info}
-Note that the \li{<html>} and \li{<body>} tags are never actually closed.
-The parser used with \li{bs4} will automatically close these hanging tags, so don't get too stressed out by this example.
-\end{info}
-
-\end{problem}
-
-\section*{Navigating the HTML Tree}
-
-Since \li{BeautifulSoup()} returns an object which acts like a nested data structure, navigating it is very intuitive.
-We will use the following for the rest of the section, unless otherwise specified.
-\begin{lstlisting}
->>> soup = BeautifulSoup(html_doc, 'html.parser')
-\end{lstlisting}
-where \li{html_doc} is the document defined in problem \ref{make_soup}.
-
-\subsection*{By Tag Name}
-
-Because of the way BeautifulSoup objects store HTML tags, accessing them is as simple as calling the tag name.
-The output will be the called tag plus any nested tags or text.
-Below are some examples.
-\begin{lstlisting}
->>> soup.head
-<<<head><title>The Three Stooges</title></head>>>
-
->>> soup.title
-<<<title>The Three Stooges</title>>>
-\end{lstlisting}
-It is even possible to continue navigation down the tree through tags contained within tags.
-\begin{lstlisting}
->>> soup.body.b
-<<<b>The Three Stooges</b>>>
-\end{lstlisting}
-Notice there are three \lstinline{<a>} tags.
-When there are two or more tags of the same name, calling that tag only returns the \textit{first} tag by that name.
-\begin{lstlisting}
->>> soup.a
-<<<a class="stooge" href="http://example.com/larry" id="link1">Larry</a>>>
-\end{lstlisting}
-
-\subsubsection{Tag Properties}
-
-In addition to viewing the entire tag, we can choose to access only certain properties.
-These properties include its name, attributes and strings (if applicable).
-
-A tag's name is found using \li{.name}.
-\begin{lstlisting}
->>> tag = soup.a
->>> tag.name
-<<u'a'>>
-\end{lstlisting}
-
-The attributes of a tag, if it has them, are stored in a dictionary and can be accessed as such.
-Accessing all the tags at once can be done through \li{.attrs}.
-Individual tags values can be reached by calling the key associated with it.
-If we try to access a key that is not an attribute, we get a \li{KeyError} in return.
-\begin{lstlisting}
->>> tag.attrs
-<<{u'class': [u'stooge'], u'href': u'http://example.com/larry', u'id': u'link1'}>>
-
->>> tag['class']
-<<[u'stooge']>>
-
->>> tag['href']
-<<u'http://example.com/larry'>>
-
->>> tag['id']
-<<u'link1'>>
-\end{lstlisting}
-Note that \li{<<class>>} returns a list.
-This is because the \li{<<class>>} attribute can have more than one value.
-This may show up in some HTML trees, but is not very common.
-
-If a tag contains any text, it can accessed with \li{.string}.
-\begin{lstlisting}
->>> tag.string
-<<u'Larry'>>
-\end{lstlisting}
-
-\begin{problem}
-Using what you have just learned, write a function that returns the following from the Three Stooges example:
-\begin{lstlisting}
-[u'title']
-\end{lstlisting}
-(Hint: This is the attribute in the eighth line of the prettified string from the previous problem.)
-\end{problem}
-
-\subsection*{By Family Relations}
-
-Once we have selected a tag, we have several options available to navigate up, down, and sideways through an HTML tree.
-
-\subsubsection{Going Down}
-
-As mentioned before, a tag may contain other nested tags or text. These are called its children.
-Calling \li{.contents} returns the children of the parent tag in a list.
-\begin{lstlisting}
->>> head_tag = soup.head
->>> head_tag
-<<<head><title>The Three Stooges</title></head>>>
-
->>> head_tag.contents
-<<[<title>The Three Stooges</title>]>>
-
->>> title_tag = head_tag.contents[0]
->>> title_tag
-<<<title>The Three Stooges</title>>>
-
->>> title_tag.contents
-<<[u'The Three Stooges']>>
-\end{lstlisting}
-Note that the child of \li{title_tag} is the string \li{<<'The Three Stooges'>>}.
-Since strings cannot cannot have children, calling \li{.contents} on this string will return an error.
-
-\begin{info}
-One thing to note is the following:
-\begin{lstlisting}
->>> children_doc = """
-...    <html><head>The Three Little Pigs</head>
-...    <body>
-...    <p>The first little piggy</p>
-...    <p>The second little piggy</p>
-...    <p>The third little piggy</p>
-...    </body>
-...    </html>"""
->>> pig_soup = BeautifulSoup(children_doc, 'html.parser')
->>> pig_soup.body.contents
-<<[u'\n',
- <p>The first little piggy</p>,
- u'\n',
- <p>The second little piggy</p>,
- u'\n',
- <p>The third little piggy</p>,
- u'\n']>>
-\end{lstlisting}
-In this example, each new line character in the \li{<body>} tag is counted as a child of \li{<body>}.
-This will be very important when trying to navigate between \textit{siblings}, or children of a common tag.
-\end{info}
-
-In addition to creating a list of children with \li{.contents}, we can use \li{.children} to create a generator of children tags.
-Using the previous example, we get the following (remember the extra carriage returns):
-\begin{lstlisting}
->>> for pig in pig_soup.body.children:
-...     print(repr(pig)) #use repr() to ignore escape sequences
-<<u'\n'
-<p>The first little piggy</p>
-u'\'n
-<p>The second little piggy</p>
-u'\n'
-<p>The third little piggy</p>
-u'\n'>>
-\end{lstlisting}
-
-There is a \li{.descendants} attribute which will recursively go through a tag's children, then the children's children, etc.
-It is left to the student to look at the online documentation for this attribute.
-
-If a tag has only one child, and that child is a string, the child is available using \li{.string}.
-If a tag has one tag, and that tag has a single string as a child, then the parent tag can use \li{.string} to access the string as well.
-\begin{lstlisting}
->>> head_tag = soup.head
->>> print(head_tag)
-<<<head><title>The Three Stooges</head></title>>>
->>> title_tag = head_tag.contents[0]
->>> print(title_tag)
-<<<title>The Three Stooges</title>>>
->>>head_tag.string
-<<u'The Three Stooges'>>
->>>title_tag.string
-<<u'The Three Stooges'>>
-\end{lstlisting}
-If a tag contains more than one string, \li{.string} return \lstinline{None}.
-However, \li{.strings} returns a generator that iterates through all strings contained within a tag.
-Check the online documentation for examples.
-
-\subsubsection{Going Up}
-
-Just as tags can have \textit{childern}, tags can also have a \textit{parent}.
-To access a tag's parent, we use the \li{.parent} attribute.
-\begin{lstlisting}
->>> title_tag = soup.title
->>> title_tag
-<<<title>The Three Stooges</title>>>
->>> title_tag.parent
-<<<head><title>The Three Stooges</title></head>>>
-\end{lstlisting}
-The parent of a string is the tag that contains it.
-\begin{lstlisting}
->>> tag = title_tag.string
->>> print(tag)
-<<The Three Stooges>>
-
->>> tag.parent
-<<<title>The Three Stooges</title>>>
-\end{lstlisting}
-Calling \li{.parents} iterates through all parents of a given tag. Examples can be found in the online documentation.
-
-\subsubsection{Going Sideways}
-
-Consider the following document, taken from the online documentation:
-\begin{lstlisting}
->>> sibling_soup = BeautifulSoup("<a><b>text 1</b><c>text 2</c></a>")
->>> print(sibling_soup.prettify())
+>>> small_soup = BeautifulSoup(small_example_html, 'html.parser')
+>>> print(small_soup.prettify())
 <<<html>
  <body>
-  <a>
-   <b>
-    text 1
-   </b>
-   <c>
-    text 2
-   </c>
-  </a>
+  <p>
+   Click
+   <a href="http://www.example.com" id="info">
+    here
+   </a>
+   for more information.
+  </p>
  </body>
 </html>>>
 \end{lstlisting}
-Note the \lstinline{<b>} and \lstinline{<c>} tags are on the same level, underneath the \li{<a>} tag.
-These tags are considered \textit{siblings}.
-Siblings in an HTML tree will always appear with the same indentation underneath a parent tag.
 
-We use the attributes \li{.next_sibling} and \li{.previous_sibling} to navigate between these sibling elements.
-If a sibling has no next or previous sibling, calling these attributes returns \li{None}.
+Each tag in a \li{BeautifulSoup} object's HTML code is stored as a \li{bs4.element.Tag} object, with actual text stored as a \li{bs4.element.NavigableString} object.
+Tags are accessible directly through the \li{BeautifulSoup} object.
 
 \begin{lstlisting}
->>> sibling_soup.b
-<<<b>text 1</b>>>
+# Get the <p> tag (and everything inside of it).
+>>> small_soup.p
+<<<p>
+    Click <a href="http://www.example.com" id="info">here</a>
+    for more information.
+</p>>>
 
->>> sibling_soup.b.next_sibling
-<<<c>text 2</c>>>
+# Get the <a> sub-tag of the <p> tag.
+>>> a_tag = small_soup.p.a
+>>> print(a_tag, type(a_tag), sep='\n')
+<<<a href="http://www.example.com" id="info">here</a>
+<class 'bs4.element.Tag'>>>
 
->>> sibling_soup.c.previous_sibling
-<<<b>text 1</b>>>
-
->>> sibling_soup.c.next_sibling #<c> has no next sibling
-<<None>>
-
->>> sibling_soup.b.string
-<<u'text 1'>>
-
->>> print(sibling_soup.b.string.next_sibling) #text 1 and text 2 are not siblings
-<<None>>
+# Get just the name, attributes, and text of the <a> tag.
+>>> print(a_tag.name, a_tag.attrs, a_tag.string, sep="\n")
+<<a
+{'id': 'info', 'href': 'http://www.example.com'}
+here>>
 \end{lstlisting}
 
-Recall that in the \li{pig_soup} example we saw extra carriage returns between the \li{<p>} tags.
-\begin{lstlisting}
->>> pig_soup.body.contents
-<<[u'\n',
- <p>The first little piggy</p>,
- u'\n',
- <p>The second little piggy</p>,
- u'\n',
- <p>The third little piggy</p>,
- u'\n']>>
-\end{lstlisting}
-What do you expect \li{pig_soup.body.p.next_sibling} to return?
-\begin{lstlisting}
->>> pig_soup.body.p.next_sibling
-<<u'\n'>>
+\begin{table}[H]
+\centering
+\begin{tabular}{c|l}
+Attribute & Description \\ \hline
+\li{name} & The name of the tag \\
+\li{attrs} & A dictionary of the attributes \\
+\li{string} & The single string contained in the tag \\
+\li{strings} & Generator for strings of children tags \\
+\li{stripped_strings} & Generator for strings of children tags, stripping whitespace \\
+\li{text} & Concatenation of strings from all children tags
+\end{tabular}
+\caption{Data attributes of the \li{bs4.element.Tag} class.}
+\label{table:bs4-tag-attributes}
+\end{table}
 
->>> pig_soup.body.p.next_sibling.next_sibling
-<<<p>The second little piggy</p>>>
-\end{lstlisting}
-We need to make two calls to \li{.next_sibling} in order to get the next \li{<p>} tag.
-Keep this in mind for future questions as you navigate across siblings.
+\begin{problem} % Find tag names using BeautifulSoup.
+The \li{BeautifulSoup} class has a \li{find_all()} method that, when called with \li{True} as the only argument, returns a list of all tags in the HTML source code.
 
-Just as with parents and children, there are also sibling generators \li{.next_siblings} and \li{.previous_siblings} to iterate through all the siblings of a given tag.
-These generators can be useful when multiple calls to \li{.next_sibling} must be made.
-As before, check the online documentation for more information.
-
-\begin{problem}
-Using the Three Stooges example and navigation by family relations, write a function that returns the following:
-\begin{lstlisting}
-<<u'Mo'>>
-\end{lstlisting}
+Write a function that accepts a string of HTML code as an argument.
+Use BeautifulSoup to return a list of the \textbf{names} of the tags in the code.
+Use your function and the source code from \url{http://www.example.com} (see \texttt{example.html}) to check your answers from Problem \ref{prob:look-at-example.com}.
 \end{problem}
 
-\begin{problem}
-Download the 'example.htm' file associated with the lab into your working directory (you can go to \url{http://example.com} to see the site this originates from).
-The following code opens and loads a file into a \li{BeautifulSoup} object:
+\subsection*{Navigating the Tree Structure} % ---------------------------------
+
+Not all tags are easily accessible from a \li{BeautifulSoup} object.
+Consider the following example.
+
 \begin{lstlisting}
->>> example_soup = BeautifulSoup(open('example.htm'), 'html.parser')
-\end{lstlisting}
-Write a function that returns the following line using two different methods.
-\begin{lstlisting}
-<<u'More information...'>>
-\end{lstlisting}
-Have the function accept an integer \li{method}. If \li{method} is 1, return the line using your first method.
-If \li{method} is 2, return the line using the other.
-\end{problem}
+>>> pig_html = """
+<html><head><title>Three Little Pigs</title></head>
+<body>
+<p class="title"><b>The Three Little Pigs</b></p>
+<p class="story">Once upon a time, there were three little pigs named
+<a href="http://example.com/larry" class="pig" id="link1">Larry,</a>
+<a href="http://example.com/mo" class="pig" id="link2">Mo</a>, and
+<a href="http://example.com/curly" class="pig" id="link3">Curly.</a>
+<p>The three pigs had an odd fascination with experimental construction.</p>
+<p>...</p>
+</body></html>
+"""
 
-\subsection*{By \texttt{find()}}
+>>> pig_soup = BeautifulSoup(pig_html, "html.parser")
+>>> pig_soup.p
+<<<p class="title"><b>The Three Little Pigs</b></p>>>
 
-In actual website HTML, often there are many tags that share a common name.
-It would be nice to find characteristics that might be unique for a given tag.
-Look back at our previous examples and think about what characteristics differentiate tags with the same name.
-BeautifulSoup uses \li{.find()} to allow you to search for a tag not only by name, but also by a specific attribute value or strings.
-The following examples refer back to the ``Three Stooges'' HTML document in problem \ref{make_soup}.
-
-Search by name:
-\begin{lstlisting}
->>> soup.find('b') #Pass in tag names, just like soup.b
-<<<b>The Three Stooges</b>>>
-
->>> #or use the name parameter
->>> soup.find(name='a') #Still only returns the first instance
-<<<a class="stooge" href="http://example.com/larry" id="link1">Larry</a>>>
-
+>>> pig_soup.a
+<<<a class="pig" href="http://example.com/larry" id="link1">Larry,</a>>>
 \end{lstlisting}
 
-Search by attribute:
+Since the HTML in this example has several \li{<p>} and \li{<a>} tags, only the \textbf{first} tag of each name is accessible directly from \li{pig_soup}.
+The other tags can be accessed by manually navigating through the HTML tree.
+
+Every HTML tag (except for the topmost tag, which is usually \li{<html>}) has a \emph{parent} tag.
+Each tag also has and zero or more \emph{sibling} and \emph{children} tags or text.
+Following a true tree structure, every \li{bs4.element.Tag} in a soup has multiple attributes for accessing or iterating through parent, sibling, or child tags.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{c|l}
+Attribute & Description \\ \hline
+\li{parent} & The parent tag \\
+\li{parents} & Generator for the parent tags up to the top level \\
+\li{next_sibling} & The tag immediately after to the current tag \\
+\li{next_siblings} & Generator for sibling tags after the current tag \\
+\li{previous_sibling} & The tag immediately before to the current tag \\
+\li{previous_siblings} & Generator for sibling tags before the current tag \\
+\li{contents} & A list of the immediate children tags\\
+\li{children} & Generator for immediate children tags\\
+\li{descendants} & Generator for all children tags (recursively)\\
+\end{tabular}
+\caption{Navigation attributes of the \li{bs4.element.Tag} class.}
+\label{table:bs4-tag-attributes-2}
+\end{table}
+
 \begin{lstlisting}
->>> soup.find(<<id>>='link3') #Search by unique id attribute
-<<<a class="stooge" href="http://example.com/curly" id="link3">Curly</a>>>
-
->>> #class is a Python keyword. Use 'class_' for the attribute key.
->>> soup.find(class_='title')
-<<<p class="title"><b>The Three Stooges</b></p>>>
-
->>> #use the attrs parameter
->>> soup.find(attrs={'id':'link3'})
-<<<a class="stooge" href="http://example.com/curly" id="link3">Curly</a>>>
-
->>> #combine attributes
->>> soup.find(attrs={'class':'stooge', 'href':'http://example.com/curly'})
-<<<a class="stooge" href="http://example.com/curly" id="link3">Curly</a>>>
-
->>> soup.find(class_='stooge', href='http://example.com/curly')
-<<<a class="stooge" href="http://example.com/curly" id="link3">Curly</a>>>
+>>> print(pig_soup.prettify())
+<<<html>
+ <head>>>                     # <head> is the parent of the <title>
+  <<<title>
+   Three Little Pigs
+  </title>
+ </head>
+ <body>>>                     # <body> is the sibling of <head>
+  <<<p class="title">>>         # and the parent of two <p> tags (title and story).
+   <<<b>
+    The Three Little Pigs
+   </b>
+  </p>
+  <p class="story">
+   Once upon a time, there were three little pigs named
+   <a class="pig" href="http://example.com/larry" id="link1">
+    Larry,
+   </a>
+   <a class="pig" href="http://example.com/mo" id="link2">
+    Mo
+   </a>
+   , and
+   <a class="pig" href="http://example.com/curly" id="link3">
+    Curly.>>                  # The preceding <a> tags are siblings with each
+   </a>                     # other and the following two <p> tags.
+   <<<p>
+    The three pigs had an odd fascination with experimental construction.
+   </p>
+   <p>
+    ...
+   </p>
+  </p>
+ </body>
+</html>>>
 \end{lstlisting}
 
-Search by string:
 \begin{lstlisting}
->>> soup.find(string='Mo') #Recall strings act as individual units
-<<u'Mo'>>
+# Start at the first <a> tag in the soup.
+>>> a_tag = pig_soup.a
+>>> a_tag
+<<<a class="pig" href="http://example.com/larry" id="link1">Larry,</a>>>
 
->>> soup.find(string='Mo').parent #access the tag through the parent
-<<<a class="stooge" href="http://example.com/mo" id="link2">Mo</a>>>
+# Get the names of all of <a>'s parent tags, traveling up to the top.
+# The name '[document]' means it is the top of the HTML code.
+>>> [par.name for par in a_tag.parents]     # <a>'s parent is <p>, whose
+<<['p', 'body', 'html', '[document]']>>         # parent is <body>, and so on.
+
+# Get the next siblings of <a>.
+>>> a_tag.next_sibling
+<<'\n'>>                                        # The first sibling is just text.
+>>> a_tag.next_sibling.next_sibling         # The second sibling is a tag.
+<<<a class="pig" href="http://example.com/mo" id="link2">Mo</a>>>
+
+# Alternatively, get all siblings past <a> at once.
+>>> list(a_tag.next_siblings)
+<<['\n',
+ <a class="pig" href="http://example.com/mo" id="link2">Mo</a>,
+ ', and\n',
+ <a class="pig" href="http://example.com/curly" id="link3">Curly.</a>,
+ '\n',
+ <p>The three pigs had an odd fascination with experimental construction.</p>,
+ '\n',
+ <p>...</p>,
+ '\n']>>
 \end{lstlisting}
 
-Search by combining parameters:
+Note carefully that newline characters are considered to be children of a parent tag.
+Therefore iterating through children or siblings often requires checking which entries are tags and which are just text.
+
 \begin{lstlisting}
->>> soup.find('a', attrs={'id':'link2','class':'stooge'})
-<a <<class>>="stooge" href="http://example.com/mo" <<id>>="link2">Mo</a>
+# Get to the <p> tag that has class="story".
+>>> p_tag = pig_soup.body.p.next_sibling.next_sibling
+>>> p_tag.attrs["class"]                # Make sure it's the right tag.
+<<['story']>>
+
+# Iterate through the child tags of <p> and print hrefs whenever they exist.
+>>> for child in p_tag.children:
+...     if hasattr(child, "attrs") and "href" in child.attrs:
+...         print(child.attrs["href"])
+<<http://example.com/larry
+http://example.com/mo
+http://example.com/curly>>
 \end{lstlisting}
 
-\begin{problem}
-Refer to the \li{example.htm} file.
-Load it using BeautifulSoup.
-Write a function that returns the tag associated with the "More information..." link using two different methods.
-At least one of these methods should use the \li{.find()} function.
-As before, have the function accept an integer \li{method}.
-If \li{method} is 1, use the first method.
-If \li{method} is 2, use the second method.
-\end{problem}
+Note that the \li{"class"} attribute of the \li{<p>} tag is a list.
+This is because the \li{"class"} attribute can take on several values at once; for example, the tag \li{<p class="story book">} is of class \li{'story'} and of class \li{'book'}.
 
-\begin{problem}
-Download 'SanDiegoWeather.htm' and load it into BeautifulSoup.
-You can find the corresponding website at \url{http://www.wunderground.com/history/airport/KSAN/2015/1/1/DailyHistory.html?req_city=San+Diego&req_state=CA&req_statename=California&reqdb.zip=92101&reqdb.magic=1&reqdb.wmo=99999&MR=1}. Using the \li{.find()} method, write a function that prints the tags referred to in the following questions:
+\begin{info}
+The behavior of the \li{string} attribute of a \li{bs4.element.Tag} object depends on the structure of the corresponding HTML tag.
 \begin{enumerate}
-\item What is the tag which contains the date, Thursday, January 1, 2015?
-\item What are the tags which contain the links `Previous Day' and `Next Day'?
-\item What is the tag which contains the number associated with the Actual Max Temperature?
+    \item If the tag has a string of text and no other child elements, then \li{string} is just that text.
+    \item If the tag has exactly one child tag and the child tag has only a string of text, then the tag has the same \li{string} as its child tag.
+    \item If the tag has more than one child, then \li{string} is \li{None}.
+    In this case, use \li{strings} to iterate through the child strings.
+    Alternatively, the \li{get_text()} method returns all text belonging to a tag and to all of its descendants.
+    In other words, it returns anything inside a tag that isn't another tag.
 \end{enumerate}
-(Hint: You can do a \li{ctrl+f} to find where the text is in the HTML, then study the tags around it.)
+
+\begin{lstlisting}
+>>> pig_soup.head
+<<<head><title>Three Little Pigs</title></head>>>
+
+# Case 1: the <title> tag's only child is a string.
+>>> pig_soup.head.title.string
+<<'Three Little Pigs'>>
+
+# Case 2: The <head> tag's only child is the <title> tag.
+>>> pig_soup.head.string
+<<'Three Little Pigs'>>
+
+# Case 3: the <body> tag has several children.
+>>> pig_soup.body.string is None
+<<True>>
+>>> print(pig_soup.body.get_text().strip())
+<<The Three Little Pigs
+Once upon a time, there were three little pigs named
+Larry,
+Mo, and
+Curly.
+The three pigs had an odd fascination with experimental construction.
+...>>
+\end{lstlisting}
+\end{info}
+
+\begin{problem}
+The file \texttt{example.html} contains the HTML source for \url{http://www.example.com}.
+Write a function that reads the file and loads the code into BeautifulSoup.
+Find the only \li{<a>} tag with a hyperlink and return its text.
 \end{problem}
 
-\subsection*{By \texttt{find\_all()}}
+\begin{comment}
+\begin{problem} % TODO: give them the html file, don't download it.
 
-Recall that when a tag appeared multiple times, calling that tag name would return the first tag of that name.
+% example.html
+Write a function that returns the following line using three different methods.
 \begin{lstlisting}
->>> soup.a
-<<<a class="stooge" href="http://example.com/larry" id="link1">Larry</a>>>
+<<'More information...'>>
+\end{lstlisting}
+The function should accept an integer.
+If the integer is 1, find the line using tag names and the \li{.string} method.
+If the integer is 2, find the line by traversing through the children of the body tag with repeated calls to \li{.contents}.
+If the integer is 3, find the line by using navigation between siblings and \li{.string}.
+\end{problem}
+\end{comment}
+
+\subsection*{Searching for Tags} % --------------------------------------------
+
+Navigating the HTML tree manually can be helpful for gathering data out of lists or tables, but these kinds of structures are usually buried deep in the tree.
+The \li{find()} and \li{find_all()} methods of the \li{BeautifulSoup} class identify tags that have distinctive characteristics, making it much easier to jump straight to a desired location in the HTML code.
+The \li{find()} method only returns the \textbf{first} tag that matches a given criteria, while \li{find_all()} returns a list of all matching tags.
+Tags can be matched by name, attributes, and/or text.
+
+\begin{lstlisting}
+# Find the first <b> tag in the soup.
+>>> pig_soup.find(name='b')
+<<<b>The Three Little Pigs</b>>>
+
+# Find all tags with a class attribute of 'pig'.
+# Since 'class' is a Python keyword, use 'class_' as the argument.
+>>> pig_soup.find_all(class_="pig")
+<<[<a class="pig" href="http://example.com/larry" id="link1">Larry,</a>,
+ <a class="pig" href="http://example.com/mo" id="link2">Mo</a>,
+ <a class="pig" href="http://example.com/curly" id="link3">Curly.</a>]>>
+
+# Find the first tag that matches several attributes.
+>>> pig_soup.find(attrs={"class": "pig", "href": "http://example.com/mo"})
+<<<a class="pig" href="http://example.com/mo" id="link2">Mo</a>>>
+
+# Find the first tag whose text is 'Mo'.
+>>> pig_soup.find(string='Mo')
+<<'Mo'>>                                # The result is the actual string,
+>>> soup.find(string='Mo').parent       # so go up one level to get the tag.
+<<<a class="pig" href="http://example.com/mo" id="link2">Mo</a>>>
 \end{lstlisting}
 
-To get all instances of a certain tag, use the \li{find_all()} command.
+\begin{problem}
+The file \texttt{san\_diego\_weather.html} contains the HTML source for an old page from Weather Underground.\footnote{See \url{http://www.wunderground.com/history/airport/KSAN/2015/1/1/DailyHistory.html?req_city=San+Diego&req_state=CA&req_statename=California&reqdb.zip=92101&reqdb.magic=1&reqdb.wmo=99999&MR=1}}.
+Write a function that reads the file and loads it into BeautifulSoup.
+Return a list of the following tags:
+\begin{enumerate}
+\item The tag containing the date ``Thursday, January 1, 2015''.
+\item The tags which contain the \textbf{links} ``Previous Day'' and ``Next Day.''
+\item The tag which contains the number associated with the Actual Max Temperature.
+\end{enumerate}
+
+This HTML tree is significantly larger than the previous examples.
+To get started, consider opening the file in a web browser.
+Find the element that you are searching for on the page, right click it, and select \li{Inspect}.
+This opens the HTML source at the element that the mouse clicked on.
+\end{problem}
+
+\subsection*{Advanced Search Techniques} % ------------------------------------
+
+Consider the problem of finding the tag that is a link the URL \url{http://example.com/curly}.
+
 \begin{lstlisting}
->>> soup.find_all('a')
-<<[<a class="stooge" href="http://example.com/larry" id="link1">Larry</a>,
- <a class="stooge" href="http://example.com/mo" id="link2">Mo</a>,
- <a class="stooge" href="http://example.com/curly" id="link3">Curly</a>]>>
+>>> pig_soup.find(href="http://example.com/curly")
+<<<a class="pig" href="http://example.com/curly" id="link3">Curly.</a>>>
 \end{lstlisting}
 
-This works with all the same arguments as the \li{.find()} function.
-You may refer to the online documentation for explicit examples.
+This approach works, but it requires entering in the entire URL.
+To perform generalized searches, the \li{find()} and \li{find_all()} method also accept compile regular expressions from the \li{re} module.
+This way, the methods locate tags whose name, attributes, and/or string matches a pattern.
 
-\subsection*{Advanced Techniques}
-The following examples are techniques that can aid you in your search for specific tags.
-Consider the ``Three Stooges'' example from before.
-Suppose you want to find the tag that includes the url \url{http://example.com/curly}.
-You could search for it using the following:
-\begin{lstlisting}
->>> soup.find(href='http://example.com/curly)
-<a class="stooge" href="http://example.com/curly" id="link3">Curly</a>
-\end{lstlisting}
-This could be annoying to type out the whole website.
-Instead you could use regular expressions as follows:
 \begin{lstlisting}
 >>> import re
->>> soup.find(href=re.compile('curly')) #find href containing 'curly' in it.
-<<<a class="stooge" href="http://example.com/curly" id="link3">Curly</a>>>
+
+# Find the first tag with an href attribute containing 'curly'.
+>>> pig_soup.find(href=re.<<compile>>(r"curly"))
+<<<a class="pig" href="http://example.com/curly" id="link3">Curly.</a>>
+
+# Find the first tag with a string that starts with 'Cu'.
+>>> pig_soup.find(string=re.<<compile>>(r"^Cu")).parent
+<<<a class="pig" href="http://example.com/curly" id="link3">Curly.</a>>>
+
+# Find all tags with text containing 'Three'.
+>>> [tag.parent for tag in pig_soup.find_all(string=re.<<compile>>(r"Three"))]
+<<[<title>Three Little Pigs</title>, <b>The Three Little Pigs</b>]>>
 \end{lstlisting}
-This method can be used for tag names, attributes, and strings as well.
+
+Finally, to find a tag that has a particular attribute, regardless of the actual value of the attribute, use \li{True} in place of search values.
+
 \begin{lstlisting}
->>> soup.find(string=re.compile('Cu')).parent #find tag with string that starts with 'Cu'.
-<<<a class="stooge" href="http://example.com/curly" id="link3">Curly</a>>>
+# Find all tags with an 'id' attribute.
+>>> pig_soup.find_all(<<id>>=True)
+<<[<a class="pig" href="http://example.com/larry" id="link1">Larry,</a>,
+ <a class="pig" href="http://example.com/mo" id="link2">Mo</a>,
+ <a class="pig" href="http://example.com/curly" id="link3">Curly.</a>]>>
+
+# Final the names all tags WITHOUT an 'id' attribute.
+>>> [tag.name for tag in pig_soup.find_all(<<id>>=False)]
+<<['html', 'head', 'title', 'body', 'p', 'b', 'p', 'p', 'p']>>
 \end{lstlisting}
 
-To find a tag that has an attribute with a value, regardless of what the value is, we can use \li{True} and \li{False} in place of actual values.
-The following returns all tags that have some value associated with their \li{href} attribute:
-\begin{lstlisting}
->>> soup.find_all(href=True)
-<<[<a class="stooge" href="http://example.com/larry" id="link1">Larry</a>,
- <a class="stooge" href="http://example.com/mo" id="link2">Mo</a>,
- <a class="stooge" href="http://example.com/curly" id="link3">Curly</a>]>>
-\end{lstlisting}
+\begin{problem} % Bank Data Index.
+The file \texttt{large\_banks\_index.html} is an index of data about large banks, as recorded by the Federal Reserve.\footnote{See \url{https://www.federalreserve.gov/releases/lbr/}.}
+Write a function that reads the file and loads the source into BeautifulSoup.
+Return a list of the tags containing the links to bank data from September 30, 2003 to December 31, 2014, where the dates are in reverse chronological order.
+\label{prob:bs-bank-index}
+\end{problem}
 
-\begin{problem}
-
-Use BeautifulSoup to load the 'Big Data dates' file.
-This page can be found at \url{https://www.federalreserve.gov/releases/lbr/}.
-Note that the actual website may include more dates than the file provided.
-Notice all the release dates of bank data, ranging from 2003 to 2014 in the file you downloaded.
-Using \li{find_all()} and \li{re}, find all the links to bank data from September 30, 2003 to December 31, 2014.
-Write a function that loads the file into BeautifulSoup and returns a list of all of the tags containing these links.
-
+\begin{problem} % Actual Bank Data.
+The file \texttt{large\_banks\_data.html} is one of the pages from the index in Problem \ref{prob:bs-bank-index}.\footnote{See \url{http://www.federalreserve.gov/releases/lbr/20030930/default.htm}.}
+Write a function that reads the file and loads the source into BeautifulSoup.
+Create a single figure with two subplots:
+\begin{enumerate}
+    \item A sorted bar chart of the seven banks with the most domestic branches.
+    \item A sorted bar chart of the seven banks with the most foreign branches.
+\end{enumerate}
+In the case of a tie, sort the banks alphabetically by name.
 \end{problem}
